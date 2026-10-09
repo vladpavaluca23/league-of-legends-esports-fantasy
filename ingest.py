@@ -4,6 +4,8 @@
 import requests
 from dotenv import load_dotenv
 import os
+import json
+import time
 
 # Load bot credentials from .env
 load_dotenv()
@@ -50,11 +52,30 @@ params = {
     "tables": "ScoreboardGames",
     "fields": "GameId, OverviewPage, Gamelength_Number",
     "where": 'OverviewPage = "2025 Season World Championship/Main Event"',
-    "limit": "5",
+    "order_by": "GameId",
 }
 
-# Send query with the logged-in session
-response = session.get(url, params=params)
-data = response.json()
-print(data)
-print(len(data["cargoquery"]))
+# Pagination: fetch rows page by page
+list_of_games = []
+limit = 20
+offset = 0
+
+while True:
+    # Send query with the logged-in session
+    params["limit"] = limit
+    params["offset"] = offset
+    response = session.get(url, params=params)
+    data = response.json()
+    list_of_games.extend(data["cargoquery"])
+    if len(data["cargoquery"]) < limit: # A page shorter than limit means there's nothing left
+        break
+    offset += limit
+    # Pause between requests to stay under the rate limit  from Leaguepedia's API
+    time.sleep(1)
+
+# Unique games should match the total
+gamed_ids = set()
+for game in list_of_games:
+    gamed_ids.add(game["title"]["GameId"])
+print(len(gamed_ids))
+
