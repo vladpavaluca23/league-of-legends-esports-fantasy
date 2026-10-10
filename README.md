@@ -42,8 +42,22 @@ Work in progress — CS50x Final Project.
 ```
     pip install -r requirements.txt
 ```
+6. Add your Leaguepedia credentials
 
-6. Run application
+   Create a bot password at https://lol.fandom.com/wiki/Special:BotPasswords
+   (with Cargo permissions), then create a `.env` file in the project folder:
+```
+    LEAGUEPEDIA_USER=YourAccount@YourBotName
+    LEAGUEPEDIA_PASSWORD=your_bot_password
+```
+
+7. Download the data
+```
+    python ingest.py
+```
+   Raw data is not included in the repo. This saves it into `data/`.
+
+8. Run application
 ```
     flask run
 ```

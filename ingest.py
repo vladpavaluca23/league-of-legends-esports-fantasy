@@ -44,7 +44,6 @@ login_params = {
 
 response = session.post(url, data=login_params)
 data = response.json()
-print(data)
 
 params = {
     "action": "cargoquery",
@@ -79,3 +78,12 @@ for game in list_of_games:
     gamed_ids.add(game["title"]["GameId"])
 print(len(gamed_ids))
 
+# Save raw data to a JSON file
+os.makedirs("data", exist_ok=True)
+with open("data/raw_games.json", "w", encoding="utf-8") as file:
+    json.dump(list_of_games, file, ensure_ascii=False, indent=4)
+
+# Load the raw data back from the JSON file to verify it was saved correctly
+with open("data/raw_games.json", "r", encoding="utf-8") as file:
+    loaded_data = json.load(file)
+    print(f"Loaded {len(loaded_data)} games from JSON file.")
