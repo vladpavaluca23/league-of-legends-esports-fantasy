@@ -153,6 +153,20 @@ cur.execute("""
     )
 """)
 
+# Load games data in Table: games
+for row in loaded_data:
+    item = row["title"]
+    cur.execute(
+        """
+        INSERT INTO games (game_id, overview_page, gamelength_number, date_time_utc) VALUES(?, ?, ?, ?)
+        ON CONFLICT (game_id) DO UPDATE SET
+            overview_page = excluded.overview_page,
+            gamelength_number = excluded.gamelength_number,
+            date_time_utc = excluded.date_time_utc
+        """,
+        (item["GameId"], item["OverviewPage"], float(item["Gamelength Number"]), item["DateTime UTC"])
+    )
+
 # Save changes to the database
 con.commit()
 con.close()
