@@ -57,6 +57,9 @@ Work in progress — CS50x Final Project.
 ```
    Raw data is not included in the repo. This saves it into `data/`.
 
+   Running `ingest.py` also creates the SQLite database `data/fantasy.db`
+with three tables: games, players and performances.
+
 8. Run application
 ```
     flask run

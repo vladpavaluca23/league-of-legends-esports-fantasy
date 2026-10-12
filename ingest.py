@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 import json
 import time
+import sqlite3
 
 # Load bot credentials from .env
 load_dotenv()
@@ -87,3 +88,50 @@ with open("data/raw_games.json", "w", encoding="utf-8") as file:
 with open("data/raw_games.json", "r", encoding="utf-8") as file:
     loaded_data = json.load(file)
     print(f"Loaded {len(loaded_data)} games from JSON file.")
+
+# Create the SQLite database and tables
+con = sqlite3.connect("data/fantasy.db")
+cur = con.cursor()
+
+# Create the table if it doesn't exist
+# Games table
+cur.execute("""
+ CREATE TABLE IF NOT EXISTS games (
+    game_id TEXT PRIMARY KEY,
+    overview_page TEXT,
+    gamelength_number REAL,
+    date_time_utc TEXT
+    )
+""")
+
+# Players table
+cur.execute("""
+ CREATE TABLE IF NOT EXISTS players (
+    link TEXT PRIMARY KEY,
+    role_number INTEGER,
+    team TEXT,
+    price REAL
+    )
+""")
+
+# Perfomances table
+cur.execute("""
+ CREATE TABLE IF NOT EXISTS performances (
+    game_id TEXT,
+    link TEXT,
+    kills INTEGER,
+    deaths INTEGER,
+    assists INTEGER,
+    cs INTEGER,
+    gold INTEGER,
+    damage_to_champions INTEGER,
+    vision_score INTEGER,
+    player_win TEXT,
+    team_kills INTEGER,
+    PRIMARY KEY (game_id, link)
+    )
+""")
+
+# Save changes to the database
+con.commit()
+con.close()
