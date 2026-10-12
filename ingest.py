@@ -8,6 +8,26 @@ import json
 import time
 import sqlite3
 
+def fetch_data(params):
+    # Pagination: fetch rows page by page
+    rows = []
+    limit = 500
+    offset = 0
+    while True:
+        # Send query with the logged-in session
+        params["limit"] = limit
+        params["offset"] = offset
+        response = session.get(url, params=params)
+        data = response.json()
+        rows.extend(data["cargoquery"])
+        if len(data["cargoquery"]) < limit: # A page shorter than limit means there's nothing left
+            break
+        offset += limit
+        # Pause between requests to stay under the rate limit  from Leaguepedia's API
+        time.sleep(1)
+    return rows
+
+
 # Load bot credentials from .env
 load_dotenv()
 user = os.getenv("LEAGUEPEDIA_USER")
@@ -46,34 +66,19 @@ login_params = {
 response = session.post(url, data=login_params)
 data = response.json()
 
+# Parameters for games table
 params = {
     "action": "cargoquery",
     "format": "json",
     "tables": "ScoreboardGames",
-    "fields": "GameId, OverviewPage, Gamelength_Number",
+    "fields": "GameId, OverviewPage, Gamelength_Number, DateTime_UTC",
     "where": 'OverviewPage = "2025 Season World Championship/Main Event"',
     "order_by": "GameId",
 }
 
-# Pagination: fetch rows page by page
-list_of_games = []
-limit = 20
-offset = 0
+list_of_games = fetch_data(params)
 
-while True:
-    # Send query with the logged-in session
-    params["limit"] = limit
-    params["offset"] = offset
-    response = session.get(url, params=params)
-    data = response.json()
-    list_of_games.extend(data["cargoquery"])
-    if len(data["cargoquery"]) < limit: # A page shorter than limit means there's nothing left
-        break
-    offset += limit
-    # Pause between requests to stay under the rate limit  from Leaguepedia's API
-    time.sleep(1)
-
-# Unique games should match the total
+#Unique games should match the total
 gamed_ids = set()
 for game in list_of_games:
     gamed_ids.add(game["title"]["GameId"])
@@ -88,6 +93,22 @@ with open("data/raw_games.json", "w", encoding="utf-8") as file:
 with open("data/raw_games.json", "r", encoding="utf-8") as file:
     loaded_data = json.load(file)
     print(f"Loaded {len(loaded_data)} games from JSON file.")
+
+# Parameters for performances table
+performance_params = {
+    "action": "cargoquery",
+    "format": "json",
+    "tables": "ScoreboardPlayers",
+    "fields": "GameId, Link, Role_Number, Team, Kills, Deaths, Assists, CS, Gold, DamageToChampions, VisionScore, PlayerWin, TeamKills",
+    "where": 'OverviewPage = "2025 Season World Championship/Main Event"',
+    "order_by": "GameId, Link",
+}
+
+list_of_performances = fetch_data(performance_params)
+
+# Save raw data to a JSON file
+with open("data/raw_performance.json", "w", encoding="utf-8") as file:
+    json.dump(list_of_performances, file, ensure_ascii=False, indent=4)
 
 # Create the SQLite database and tables
 con = sqlite3.connect("data/fantasy.db")
@@ -114,7 +135,7 @@ cur.execute("""
     )
 """)
 
-# Perfomances table
+# Performances table
 cur.execute("""
  CREATE TABLE IF NOT EXISTS performances (
     game_id TEXT,
