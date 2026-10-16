@@ -79,10 +79,10 @@ params = {
 list_of_games = fetch_data(params)
 
 #Unique games should match the total
-gamed_ids = set()
+game_ids = set()
 for game in list_of_games:
-    gamed_ids.add(game["title"]["GameId"])
-print(len(gamed_ids))
+    game_ids.add(game["title"]["GameId"])
+print(len(game_ids))
 
 # Save raw data to a JSON file
 os.makedirs("data", exist_ok=True)
@@ -92,7 +92,7 @@ with open("data/raw_games.json", "w", encoding="utf-8") as file:
 # Load the raw data back from the JSON file to verify it was saved correctly
 with open("data/raw_games.json", "r", encoding="utf-8") as file:
     loaded_data = json.load(file)
-    print(f"Loaded {len(loaded_data)} games from JSON file.")
+
 
 # Parameters for performances table
 performance_params = {
@@ -166,6 +166,47 @@ for row in loaded_data:
         """,
         (item["GameId"], item["OverviewPage"], float(item["Gamelength Number"]), item["DateTime UTC"])
     )
+
+# Load the raw data back from the JSON
+with open("data/raw_performance.json", "r", encoding="utf-8") as file:
+    loaded_performances = json.load(file)
+
+# Prepare performance rows for insertion
+performance_rows = []
+# Build one tuple per performance for executemany
+for row in loaded_performances:
+    item = row["title"]
+    performance_rows.append((
+        item["GameId"],
+        item["Link"],
+        int(item["Kills"]),
+        int(item["Deaths"]),
+        int(item["Assists"]),
+        int(item["CS"]),
+        int(item["Gold"]),
+        int(item["DamageToChampions"]),
+        int(item["VisionScore"]),
+        item["PlayerWin"],
+        int(item["TeamKills"])
+    ))
+
+# Load performance data in Table: performances
+cur.executemany(
+    """
+        INSERT INTO performances (game_id, link, kills, deaths, assists, cs, gold, damage_to_champions, vision_score, player_win, team_kills) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (game_id, link) DO UPDATE SET
+            kills = excluded.kills,
+            deaths = excluded.deaths,
+            assists = excluded.assists,
+            cs = excluded.cs,
+            gold = excluded.gold,
+            damage_to_champions = excluded.damage_to_champions,
+            vision_score = excluded.vision_score,
+            player_win = excluded.player_win,
+            team_kills = excluded.team_kills
+    """,
+    performance_rows
+)
 
 # Save changes to the database
 con.commit()
