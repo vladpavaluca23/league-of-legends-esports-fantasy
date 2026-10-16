@@ -7,6 +7,7 @@ import os
 import json
 import time
 import sqlite3
+import sys
 
 def fetch_data(params):
     # Pagination: fetch rows page by page
@@ -206,6 +207,35 @@ cur.executemany(
             team_kills = excluded.team_kills
     """,
     performance_rows
+)
+
+# Create a set of unique player links from the performances data
+links = set()
+for row in loaded_performances:
+    item = row["title"]
+    links.add(item["Link"])
+
+# Create a set of unique triplets (link, role_number, team) from the performances data
+triplets = set()
+for row in loaded_performances:
+    item = row["title"]
+    triplet = (item["Link"], int(item["Role Number"]), item["Team"])
+    triplets.add(triplet)
+
+# Stop if a player has more than one role or team (likely corrupted data).
+# Used Claude (AI) for guidance.
+if len(links) != len(triplets):
+    sys.exit("Error: The number of unique links does not match the number of unique triplets (link, role_number, team).")
+
+# Load player data in Table: players
+cur.executemany(
+    """
+        INSERT INTO players (link, role_number, team) VALUES (?, ?, ?)
+        ON CONFLICT (link) DO UPDATE SET
+            role_number = excluded.role_number,
+            team = excluded.team
+    """,
+    triplets
 )
 
 # Save changes to the database

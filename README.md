@@ -64,6 +64,17 @@ with three tables: games, players and performances.
 ```
     flask run
 ```
+## Known limitations
+
+- **Renamed players.** Players are identified by their Leaguepedia `link`.
+  If a player changes their in-game name, they show up as a separate player for every name they used.
+  This is acceptable for now because a name change during a single tournament is very unlikely.
+  A fix would be to map every old name to the same player, using a source that tracks name history.
+
+- **One role and one team per player.** The ingestion assumes that every player has exactly one role and one team.
+  If the data shows the same player with more than one role or team, the script stops instead of saving anything.
+  This is on purpose: at Worlds, rosters are locked, so a conflict most likely means the data is corrupted.
+  Tracking these changes would need a role and team history for each player, with start and end dates.
 
 
 
