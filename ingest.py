@@ -9,6 +9,9 @@ import time
 import sqlite3
 import sys
 
+# Constants
+N_GAMES = 20 #Number of games to fetch for calculating prices
+
 def fetch_data(params):
     # Pagination: fetch rows page by page
     rows = []
@@ -28,6 +31,23 @@ def fetch_data(params):
         time.sleep(1)
     return rows
 
+def fetch_history(link, cutoff_date):
+    # Fetches the last N_GAMES games for a player before the cutoff date
+    history_params = {
+        "action": "cargoquery",
+        "format": "json",
+        "tables": "ScoreboardPlayers=SP, ScoreboardGames=SG",
+        "join_on": "SP.GameId = SG.GameId",
+        "fields": "SP.GameId, SP.Link, SP.Team, SP.Role_Number, SP.DateTime_UTC, SP.OverviewPage, "
+        "SP.Kills, SP.Deaths, SP.Assists, SP.CS, SP.Gold, SP.DamageToChampions, "
+        "SP.VisionScore, SP.PlayerWin, SP.TeamKills, SG.Gamelength_Number",
+        "where": f'SP.Link = "{link}" AND SP.DateTime_UTC < "{cutoff_date}"',
+        "order_by": "SP.DateTime_UTC DESC",
+        "limit": N_GAMES,
+    }
+    response = session.get(url, params=history_params)
+    data = response.json()
+    return data["cargoquery"]
 
 # Load bot credentials from .env
 load_dotenv()
@@ -115,7 +135,8 @@ with open("data/raw_performance.json", "w", encoding="utf-8") as file:
 con = sqlite3.connect("data/fantasy.db")
 cur = con.cursor()
 
-# Create the table if it doesn't exist
+# DATABASE TABLES CREAT
+
 # Games table
 cur.execute("""
  CREATE TABLE IF NOT EXISTS games (
@@ -151,6 +172,29 @@ cur.execute("""
     player_win TEXT,
     team_kills INTEGER,
     PRIMARY KEY (game_id, link)
+    )
+""")
+
+# History table (last N games played)
+cur.execute("""
+    CREATE TABLE IF NOT EXISTS history (
+        game_id TEXT,
+        link TEXT,
+        team TEXT,
+        role_number INTEGER,
+        date_time_utc TEXT,
+        overview_page TEXT,
+        kills INTEGER,
+        deaths INTEGER,
+        assists INTEGER,
+        cs INTEGER,
+        gold INTEGER,
+        damage_to_champions INTEGER,
+        vision_score INTEGER,
+        player_win TEXT,
+        team_kills INTEGER,
+        gamelength_number REAL,
+        PRIMARY KEY (game_id, link)
     )
 """)
 
@@ -237,6 +281,71 @@ cur.executemany(
     """,
     triplets
 )
+
+# Fetch the last N_GAMES of every player before the Main Event
+cutoff_date = cur.execute("SELECT MIN(date_time_utc) FROM games").fetchone()[0]
+history = []
+for link in links:
+    rows = fetch_history(link, cutoff_date)
+    history.extend(rows)
+    time.sleep(1)
+
+# Save raw data to a JSON file
+with open("data/raw_history.json", "w", encoding="utf-8") as file:
+    json.dump(history, file, ensure_ascii=False, indent=4)
+
+# Load the raw data back from the JSON
+with open("data/raw_history.json", "r", encoding="utf-8") as file:
+    loaded_history = json.load(file)
+
+#Prepare data for history insertion in DB
+history_rows = []
+# Build one tuple per performance for executemany
+for row in loaded_history:
+    item = row["title"]
+    history_rows.append((
+        item["GameId"],
+        item["Link"],
+        item["Team"],
+        int(item["Role Number"]),
+        item["DateTime UTC"],
+        item["OverviewPage"],
+        int(item["Kills"]),
+        int(item["Deaths"]),
+        int(item["Assists"]),
+        int(item["CS"]),
+        int(item["Gold"]),
+        int(item["DamageToChampions"]),
+        int(item["VisionScore"]),
+        item["PlayerWin"],
+        int(item["TeamKills"]),
+        float(item["Gamelength Number"])
+    ))
+
+# Load performance data in Table: history
+cur.executemany(
+    """
+        INSERT INTO history (game_id, link, team, role_number, date_time_utc, overview_page, kills, deaths, assists, cs, gold, damage_to_champions, vision_score, player_win, team_kills, gamelength_number)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (game_id, link) DO UPDATE SET
+            team = excluded.team,
+            role_number = excluded.role_number,
+            date_time_utc = excluded.date_time_utc,
+            overview_page = excluded.overview_page,
+            kills = excluded.kills,
+            deaths = excluded.deaths,
+            assists = excluded.assists,
+            cs = excluded.cs,
+            gold = excluded.gold,
+            damage_to_champions = excluded.damage_to_champions,
+            vision_score = excluded.vision_score,
+            player_win = excluded.player_win,
+            team_kills = excluded.team_kills,
+            gamelength_number = excluded.gamelength_number
+    """,
+    history_rows
+)
+
 
 # Save changes to the database
 con.commit()
