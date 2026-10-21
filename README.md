@@ -56,14 +56,22 @@ Work in progress — CS50x Final Project.
     python ingest.py
 ```
    Raw data is not included in the repo. This saves it into `data/`.
+   It takes about 2 minutes, because the player history is fetched one player at a time.
 
    Running `ingest.py` also creates the SQLite database `data/fantasy.db`
-with three tables: games, players and performances.
+with four tables: games, players, performances and history.
 
 8. Run application
 ```
     flask run
 ```
+
+## Design decisions
+
+- **Player prices come from games before the Main Event.** Prices are based on each player's last `N_GAMES` (20) games played before the first Main Event game, Play-In included.
+
+- **Player links are normalized.** While checking the data, I found a player written as `Shad0w` in the Worlds data and `shad0w` in his earlier games. During ingestion, every link in `history` is rewritten to its spelling in `players`.
+
 ## Known limitations
 
 - **Renamed players.** Players are identified by their Leaguepedia `link`.
@@ -75,6 +83,8 @@ with three tables: games, players and performances.
   If the data shows the same player with more than one role or team, the script stops instead of saving anything.
   This is on purpose: at Worlds, rosters are locked, so a conflict most likely means the data is corrupted.
   Tracking these changes would need a role and team history for each player, with start and end dates.
+
+- **The pricing window covers different time spans.** Every player gets the same number of games (20), no matter when they were played.
 
 
 

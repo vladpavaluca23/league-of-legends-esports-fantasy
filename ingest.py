@@ -55,10 +55,6 @@ user = os.getenv("LEAGUEPEDIA_USER")
 password = os.getenv("LEAGUEPEDIA_PASSWORD")
 url = "https://lol.fandom.com/api.php"
 
-# Check credentials loaded
-print(f"User: {user}")
-print(f"Password: {password is not None}")
-
 # Session keeps cookies, so we stay logged in between requests
 session = requests.Session()
 
@@ -103,7 +99,6 @@ list_of_games = fetch_data(params)
 game_ids = set()
 for game in list_of_games:
     game_ids.add(game["title"]["GameId"])
-print(len(game_ids))
 
 # Save raw data to a JSON file
 os.makedirs("data", exist_ok=True)
@@ -298,6 +293,12 @@ with open("data/raw_history.json", "w", encoding="utf-8") as file:
 with open("data/raw_history.json", "r", encoding="utf-8") as file:
     loaded_history = json.load(file)
 
+# Leaguepedia matches links case-insensitively
+# Map each lowercase link to its spelling in players, so both tables use the same link.
+correct_link = {}
+for link in links:
+    correct_link[link.lower()] = link
+
 #Prepare data for history insertion in DB
 history_rows = []
 # Build one tuple per performance for executemany
@@ -305,7 +306,7 @@ for row in loaded_history:
     item = row["title"]
     history_rows.append((
         item["GameId"],
-        item["Link"],
+        correct_link[item["Link"].lower()],
         item["Team"],
         int(item["Role Number"]),
         item["DateTime UTC"],
@@ -349,4 +350,8 @@ cur.executemany(
 
 # Save changes to the database
 con.commit()
+
+print(f"Done: {len(loaded_data)} games, {len(loaded_performances)} performances, "
+      f"{len(triplets)} players, {len(history_rows)} history rows")
+
 con.close()
