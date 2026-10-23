@@ -68,9 +68,12 @@ with four tables: games, players, performances and history.
 
 ## Design decisions
 
-- **Player prices come from games before the Main Event.** Prices are based on each player's last `N_GAMES` (20) games played before the first Main Event game, Play-In included.
+- Player prices come from games before the Main Event. Prices are based on each player's last `N_GAMES` (20) games played before the first Main Event game, Play-In included.
 
-- **Player links are normalized.** While checking the data, I found a player written as `Shad0w` in the Worlds data and `shad0w` in his earlier games. During ingestion, every link in `history` is rewritten to its spelling in `players`.
+- Player links are normalized. While checking the data, I found a player written as `Shad0w` in the Worlds data and `shad0w` in his earlier games. During ingestion, every link in `history` is rewritten to its spelling in `players`.
+- Prices are calculated in `pricing.py`, separate from `ingest.py`, so all pricing rules stay in one place.
+- A price is a guess of how many fantasy points a player will score, so it uses the same stats and weights as the scoring engine: kills, deaths (small penalty), assists, CS, damage, vision and wins. CS, damage and vision are counted per minute, because they grow with game length. Games from smaller leagues count at 80%. Each player is compared only with players in the same role.
+- Left out on purpose: a minimum number of games and a default price, because all 83 players have 20 games in the pricing window.
 
 ## Known limitations
 
