@@ -2,6 +2,7 @@
 # Used Claude (AI) for explaining SQL concepts (CASE, CTE)
 
 import sqlite3
+from helpers import WEIGHTS, points
 
 # Connect to the database
 con = sqlite3.connect("data/fantasy.db")
@@ -35,8 +36,6 @@ stats_per_player = cur.execute(
         GROUP BY link, role_number;
     """
 ).fetchall()
-
-print(len(stats_per_player))
 
 # Close connection
 con.close()
