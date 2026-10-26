@@ -31,3 +31,10 @@ SELECT DISTINCT overview_page,
 	END AS factor
 FROM history
 ORDER BY overview_page;
+
+-- 4. Games per player in history to check minimum games per player
+-- Result: all 83 players have exactly 20 games 
+SELECT link, COUNT(*) AS games
+FROM history
+GROUP BY link
+ORDER BY games;
