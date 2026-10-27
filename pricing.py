@@ -53,8 +53,25 @@ for player in stats_per_player:
         "damage_to_champions": player["damage_per_min"] * average_gamelength,
         "vision_score": player["vision_per_min"] * average_gamelength
     }
-
     players_points.append({"link": player["link"], "role_number": player["role_number"], "points": points(standard_game)})
+
+# Put each player's points in a list for their role
+by_role = {}
+for player in players_points:
+    role = player["role_number"]
+    if role not in by_role:
+        by_role[role] = []
+    by_role[role].append(player["points"])
+
+# Average points for each role
+average_by_role = {}
+for role, points_role in by_role.items():
+    average_by_role[role] = sum(points_role) / len(points_role)
+
+# Compare each player's points with the average of their role
+for player in players_points:
+    role_average = average_by_role[player["role_number"]]
+    player["points_vs_role"] = player["points"] - role_average
 
 # Close connection
 con.close()
