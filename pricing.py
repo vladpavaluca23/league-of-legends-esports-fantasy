@@ -6,6 +6,7 @@ from helpers import WEIGHTS, points
 
 # Connect to the database
 con = sqlite3.connect("data/fantasy.db")
+con.row_factory = sqlite3.Row
 cur = con.cursor()
 
 # Extract: stats per player from history (small-league games count at 80%)
@@ -36,6 +37,24 @@ stats_per_player = cur.execute(
         GROUP BY link, role_number;
     """
 ).fetchall()
+
+# Finding the average game duration in minutes
+average_gamelength = cur.execute("SELECT AVG(gamelength_number) FROM history").fetchone()[0]
+
+# Transform: points per player in a standard game
+players_points = []
+for player in stats_per_player:
+    standard_game = {
+        "kills": player["kills"],
+        "deaths": player["deaths"],
+        "assists": player["assists"],
+        "win": player["win"],
+        "cs": player["cs_per_min"] * average_gamelength,
+        "damage_to_champions": player["damage_per_min"] * average_gamelength,
+        "vision_score": player["vision_per_min"] * average_gamelength
+    }
+
+    players_points.append({"link": player["link"], "role_number": player["role_number"], "points": points(standard_game)})
 
 # Close connection
 con.close()
